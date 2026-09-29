@@ -1,0 +1,10 @@
+# solo se suben los archivos del sitio: HTML, estilos/scripts (datos/*.js|css) e imágenes (escudos, favicon)
+*
+!*/
+!*.html
+!*.js
+!*.css
+!*.webp
+!*.png
+!.nojekyll
+!.gitignore
