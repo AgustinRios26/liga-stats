@@ -1,4 +1,4 @@
-# solo se suben los archivos del sitio: HTML, estilos/scripts (datos/*.js|css) e imágenes (escudos, favicon)
+# solo se suben los archivos del sitio: HTML, estilos/scripts (datos/*.js|css) imágenes (escudos, favicon) y fuentes (.woff2)
 *
 !*/
 !*.html
@@ -6,5 +6,6 @@
 !*.css
 !*.webp
 !*.png
+!*.woff2
 !.nojekyll
 !.gitignore

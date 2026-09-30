@@ -1,17 +1,96 @@
-(function(){const norm=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));const POS={G:"Arquero",D:"Defensor",M:"Mediocampista",F:"Delantero"};const IDX=window.INDICE||{equipos:[],jugadores:[]};const R=window.RAIZ||"";const eq=IDX.equipos.map(e=>({...e,k:norm(e.n)}));const ju=IDX.jugadores.map(j=>({...j,k:norm(j.n),kt:norm(j.t)}));function puntaje(k,q){if(!q)return 0;if(k===q)return 100;if(k.startsWith(q))return 80;if(k.split(/[\s'-]+/).some(w=>w.startsWith(q)))return 60;if(k.includes(q))return 40;return 0;}
-function buscar(texto){const q=norm(texto).trim();if(q.length<2)return{e:[],j:[]};const partes=q.split(/\s+/);const e=eq.map(x=>({x,s:puntaje(x.k,q)})).filter(o=>o.s).sort((a,b)=>b.s-a.s).slice(0,6).map(o=>o.x);const j=ju.map(x=>{const ok=partes.every(p=>x.k.includes(p)||x.kt.includes(p));return{x,s:ok?Math.max(puntaje(x.k,q),20)+Math.min(x.m,3000)/3000*5:0};}).filter(o=>o.s).sort((a,b)=>b.s-a.s).slice(0,12).map(o=>o.x);return{e,j};}
-function montar(host){host.innerHTML='<div class="bq"><input type="search" placeholder="Buscar equipo o jugador…" aria-label="Buscar equipo o jugador" autocomplete="off"><div class="bq-res"></div></div>';const cont=host.querySelector(".bq"),inp=cont.querySelector("input"),res=cont.querySelector(".bq-res");let items=[],sel=-1;const pintar=()=>{const r=buscar(inp.value);let h="";if(r.e.length)h+='<div class="g">Equipos</div>'+r.e.map(x=>`<a href="${R}equipos/${x.s}/index.html"><span>${esc(x.n)}</span><small>equipo</small></a>`).join("");if(r.j.length)h+='<div class="g">Jugadores</div>'+r.j.map(x=>`<a href="${R}${x.u}"><span>${esc(x.n)}</span><small>${esc(x.t)} · ${POS[x.p]||x.p}</small></a>`).join("");if(!h)h=inp.value.trim().length>=2?'<div class="vacio">No encontré nada con ese nombre.</div>':"";res.innerHTML=h;res.classList.toggle("open",!!h);items=[...res.querySelectorAll("a")];sel=-1;};const marcar=n=>{items.forEach((a,i)=>a.classList.toggle("sel",i===n));sel=n;if(items[n])items[n].scrollIntoView({block:"nearest"});};inp.addEventListener("input",pintar);inp.addEventListener("focus",pintar);inp.addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();marcar(Math.min(items.length-1,sel+1));}
-else if(e.key==="ArrowUp"){e.preventDefault();marcar(Math.max(0,sel-1));}
-else if(e.key==="Enter"){const a=items[sel>=0?sel:0];if(a)location.href=a.href;}
-else if(e.key==="Escape"){res.classList.remove("open");inp.blur();}});document.addEventListener("click",e=>{if(!cont.contains(e.target))res.classList.remove("open");});return inp;}
-function temaGuardado(){try{return localStorage.getItem("tema");}catch(e){return null;}}
-function prefiereOscuro(){return window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;}
-function esOscuro(){const t=temaGuardado();return t?t==="dark":prefiereOscuro();}
-function aplicarTema(t){if(t)document.documentElement.setAttribute("data-theme",t);else document.documentElement.removeAttribute("data-theme");try{if(t)localStorage.setItem("tema",t);else localStorage.removeItem("tema");}catch(e){}}
-function pintarBoton(b){b.textContent=esOscuro()?"☀️":"🌙";}
-function conectarBoton(b){pintarBoton(b);b.addEventListener("click",()=>{aplicarTema(esOscuro()?"light":"dark");document.querySelectorAll(".tema-btn").forEach(pintarBoton);});}
-function iniciarTema(){const btns=document.querySelectorAll(".tema-btn");if(btns.length){btns.forEach(conectarBoton);return;}
-const b=document.createElement("button");b.type="button";b.className="tema-btn tema-btn-flotante";b.setAttribute("aria-label","Cambiar entre modo claro y oscuro");document.body.appendChild(b);conectarBoton(b);}
-function iniciar(){const hosts=document.querySelectorAll(".buscador");let primero=null;hosts.forEach(h=>{const i=montar(h);primero=primero||i;});if(!hosts.length){const f=document.createElement("div");f.className="bq-flotante";f.innerHTML='<button type="button">Buscar</button><div class="buscador"></div>';document.body.appendChild(f);const i=montar(f.querySelector(".buscador"));f.querySelector("button").addEventListener("click",()=>{f.classList.toggle("open");if(f.classList.contains("open"))i.focus();});primero=i;}
-iniciarTema();document.addEventListener("keydown",e=>{if(e.key==="/"&&!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)){e.preventDefault();const f=document.querySelector(".bq-flotante");if(f)f.classList.add("open");if(primero)primero.focus();}});}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",iniciar);else iniciar();})();
+(function(){
+  const norm = t => String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+  const esc = t => String(t).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const POS = {G:"Arquero", D:"Defensor", M:"Mediocampista", F:"Delantero"};
+  const IDX = window.INDICE || {equipos:[], jugadores:[]};
+  const R = window.RAIZ || "";
+  const eq = IDX.equipos.map(e=>({...e, k:norm(e.n)}));
+  const ju = IDX.jugadores.map(j=>({...j, k:norm(j.n), kt:norm(j.t)}));
+  function puntaje(k, q){
+    if(!q) return 0;
+    if(k === q) return 100;
+    if(k.startsWith(q)) return 80;
+    if(k.split(/[\s'-]+/).some(w=>w.startsWith(q))) return 60;
+    if(k.includes(q)) return 40;
+    return 0;
+  }
+  function buscar(texto){
+    const q = norm(texto).trim();
+    if(q.length < 2) return {e:[], j:[]};
+    const partes = q.split(/\s+/);
+    const e = eq.map(x=>({x, s:puntaje(x.k, q)})).filter(o=>o.s).sort((a,b)=>b.s-a.s).slice(0,6).map(o=>o.x);
+    const j = ju.map(x=>{
+      const ok = partes.every(p=>x.k.includes(p) || x.kt.includes(p));
+      return {x, s: ok ? Math.max(puntaje(x.k, q), 20) + Math.min(x.m,3000)/3000*5 : 0};
+    }).filter(o=>o.s).sort((a,b)=>b.s-a.s).slice(0,12).map(o=>o.x);
+    return {e, j};
+  }
+  function montar(host){
+    host.innerHTML = '<div class="bq"><input type="search" placeholder="Buscar equipo o jugador…" aria-label="Buscar equipo o jugador" autocomplete="off"><div class="bq-res"></div></div>';
+    const cont = host.querySelector(".bq"), inp = cont.querySelector("input"), res = cont.querySelector(".bq-res");
+    let items = [], sel = -1;
+    const pintar = ()=>{
+      const r = buscar(inp.value);
+      let h = "";
+      if(r.e.length) h += '<div class="g">Equipos</div>' + r.e.map(x=>`<a href="${R}equipos/${x.s}/index.html"><span>${esc(x.n)}</span><small>equipo</small></a>`).join("");
+      if(r.j.length) h += '<div class="g">Jugadores</div>' + r.j.map(x=>`<a href="${R}${x.u}"><span>${esc(x.n)}</span><small>${esc(x.t)} · ${POS[x.p]||x.p}</small></a>`).join("");
+      if(!h) h = inp.value.trim().length >= 2 ? '<div class="vacio">No encontré nada con ese nombre.</div>' : "";
+      res.innerHTML = h; res.classList.toggle("open", !!h);
+      items = [...res.querySelectorAll("a")]; sel = -1;
+    };
+    const marcar = n=>{ items.forEach((a,i)=>a.classList.toggle("sel", i===n)); sel = n; if(items[n]) items[n].scrollIntoView({block:"nearest"}); };
+    inp.addEventListener("input", pintar);
+    inp.addEventListener("focus", pintar);
+    inp.addEventListener("keydown", e=>{
+      if(e.key === "ArrowDown"){ e.preventDefault(); marcar(Math.min(items.length-1, sel+1)); }
+      else if(e.key === "ArrowUp"){ e.preventDefault(); marcar(Math.max(0, sel-1)); }
+      else if(e.key === "Enter"){ const a = items[sel>=0?sel:0]; if(a) location.href = a.href; }
+      else if(e.key === "Escape"){ res.classList.remove("open"); inp.blur(); }
+    });
+    document.addEventListener("click", e=>{ if(!cont.contains(e.target)) res.classList.remove("open"); });
+    return inp;
+  }
+  function temaGuardado(){ try{ return localStorage.getItem("tema"); }catch(e){ return null; } }
+  function prefiereOscuro(){ return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; }
+  function esOscuro(){ const t = temaGuardado(); return t ? t === "dark" : prefiereOscuro(); }
+  function aplicarTema(t){
+    if(t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
+    try{ if(t) localStorage.setItem("tema", t); else localStorage.removeItem("tema"); }catch(e){}
+  }
+  function pintarBoton(b){ b.textContent = esOscuro() ? "☀️" : "🌙"; }
+  function conectarBoton(b){
+    pintarBoton(b);
+    b.addEventListener("click", ()=>{ aplicarTema(esOscuro() ? "light" : "dark"); document.querySelectorAll(".tema-btn").forEach(pintarBoton); });
+  }
+  function iniciarTema(){
+    const btns = document.querySelectorAll(".tema-btn");
+    if(btns.length){ btns.forEach(conectarBoton); return; }
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tema-btn tema-btn-flotante"; b.setAttribute("aria-label", "Cambiar entre modo claro y oscuro");
+    document.body.appendChild(b);
+    conectarBoton(b);
+  }
+  function iniciar(){
+    const hosts = document.querySelectorAll(".buscador");
+    let primero = null;
+    hosts.forEach(h=>{ const i = montar(h); primero = primero || i; });
+    if(!hosts.length){
+      const f = document.createElement("div");
+      f.className = "bq-flotante";
+      f.innerHTML = '<button type="button">Buscar</button><div class="buscador"></div>';
+      document.body.appendChild(f);
+      const i = montar(f.querySelector(".buscador"));
+      f.querySelector("button").addEventListener("click", ()=>{ f.classList.toggle("open"); if(f.classList.contains("open")) i.focus(); });
+      primero = i;
+    }
+    iniciarTema();
+    document.addEventListener("keydown", e=>{
+      if(e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)){
+        e.preventDefault();
+        const f = document.querySelector(".bq-flotante"); if(f) f.classList.add("open");
+        if(primero) primero.focus();
+      }
+    });
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
+})();
