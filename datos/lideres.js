@@ -16,8 +16,12 @@ function fmt(k, v){
 }
 const colorPct = p => p==null ? "var(--ink-faint)" : p>=75 ? "var(--good)" : p<=25 ? "var(--bad)" : "var(--home)";
 const SITS = [["assisted","Jugada armada (con asistencia)"],["fast-break","Contraataque"],["corner","Córner"],["set-piece","Pelota parada"],["free-kick","Tiro libre"],["penalty","Penal"],["regular","Jugada individual"],["throw-in-set-piece","Lateral"]];
-const st = {sit: "assisted", sitM: "xg", cat: "general", pos: "", eq: "", edad: "", modo: "rank", minJ: MINPCT, orden: "score", asc: false, buscar: ""};
+const st = {sit: "assisted", sitM: "xg", cat: "general", pos: "", rol: "", eq: "", edad: "", modo: "rank", minJ: MINPCT, orden: "score", asc: false, buscar: ""};
 const cumpleEdad = j => !st.edad || (j.age != null && j.age < +st.edad);
+const ROLES = [["arquero","Arquero"],["lateral derecho","Lateral derecho"],["central","Central"],["lateral izquierdo","Lateral izquierdo"],
+  ["volante central","Volante central"],["volante","Volante interior"],["volante por derecha","Volante por derecha"],["volante por izquierda","Volante por izquierda"],
+  ["enganche","Enganche / mediapunta"],["extremo derecho","Extremo derecho"],["extremo izquierdo","Extremo izquierdo"],["centrodelantero","Centrodelantero"]];
+const cumpleRol = j => !st.rol || [j.rol, j.rol2].some(r => st.rol === "central" ? /^central/.test(r || "") : r === st.rol);
 const equipos = [...new Map(JUG.map(j=>[j.ts, j.tn])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
 function puntajeCat(j, cat){
   if(!cat.keys) return j.score;
@@ -27,7 +31,7 @@ function puntajeCat(j, cat){
 }
 function lista(){
   const cat = LIGA.categorias.find(c=>c.id===st.cat);
-  let js = JUG.filter(j=>j.min >= st.minJ && cat.pos.includes(j.pos) && (!st.pos || j.pos===st.pos) && (!st.eq || j.ts===st.eq) && cumpleEdad(j));
+  let js = JUG.filter(j=>j.min >= st.minJ && cat.pos.includes(j.pos) && (!st.pos || j.pos===st.pos) && cumpleRol(j) && (!st.eq || j.ts===st.eq) && cumpleEdad(j));
   js = js.map(j=>({j, s: puntajeCat(j,cat)})).filter(o=>o.s!=null);
   js.sort((a,b)=>b.s-a.s || b.j.min-a.j.min);
   return {cat, js};
@@ -60,7 +64,7 @@ function fmtCol(j, c){
   return KI[c==="xa90"?"xa":c]!=null ? fmt(c==="xa90"?"xa":c, v) : String(v);
 }
 function tablaHTML(){
-  let js = JUG.filter(j=>j.min >= st.minJ && (!st.pos || j.pos===st.pos) && (!st.eq || j.ts===st.eq) && cumpleEdad(j));
+  let js = JUG.filter(j=>j.min >= st.minJ && (!st.pos || j.pos===st.pos) && cumpleRol(j) && (!st.eq || j.ts===st.eq) && cumpleEdad(j));
   if(st.buscar){ const q = st.buscar.toLowerCase(); js = js.filter(j=>j.name.toLowerCase().includes(q)); }
   js.sort((a,b)=>{ const va = valorCol(a,st.orden), vb = valorCol(b,st.orden); if(va==null&&vb==null) return 0; if(va==null) return 1; if(vb==null) return -1; return st.asc ? va-vb : vb-va; });
   const cab = COLS.map(([c,l])=>`<th class="n ord ${st.orden===c?"act":""}" data-c="${c}">${l}${st.orden===c?(st.asc?" ▲":" ▼"):""}</th>`).join("");
@@ -70,7 +74,7 @@ function tablaHTML(){
 }
 function sitHTML(){
   const idx = st.sitM==="g" ? 1 : st.sitM==="sh" ? 0 : 2;
-  let js = JUG.filter(j=>j.min >= st.minJ && (!st.pos || j.pos===st.pos) && (!st.eq || j.ts===st.eq) && cumpleEdad(j) && j.sit && j.sit[st.sit]);
+  let js = JUG.filter(j=>j.min >= st.minJ && (!st.pos || j.pos===st.pos) && cumpleRol(j) && (!st.eq || j.ts===st.eq) && cumpleEdad(j) && j.sit && j.sit[st.sit]);
   js.sort((a,b)=>b.sit[st.sit][idx]-a.sit[st.sit][idx] || b.sit[st.sit][2]-a.sit[st.sit][2]);
   const filas = js.slice(0,30).map((j,i)=>{ const x = j.sit[st.sit];
     return `<a class="rank-fila" href="${R}${j.u}"><span class="n">${i+1}</span><span class="quien"><b>${esc(j.name)}</b><small>${escudoChico(j.ts)}${esc(j.tn)} · ${POSN[j.pos]} · ${j.min}'</small></span>
@@ -87,6 +91,7 @@ function filtrosActivos(){
   const chips = [];
   if(st.eq) chips.push(["eq", "Equipo: " + esc(equipos.find(([s])=>s===st.eq)?.[1] || st.eq)]);
   if(st.pos) chips.push(["pos", "Puesto: " + POSP[st.pos]]);
+  if(st.rol) chips.push(["rol", "Posición: " + (ROLES.find(([k])=>k===st.rol)||[,st.rol])[1]]);
   if(st.edad) chips.push(["edad", "Menores de " + st.edad]);
   if(!chips.length) return "";
   return `<div class="filtros-activos"><span>Mostrando solo</span>${chips.map(([k,l])=>`<span class="filtro-chip">${l}<button type="button" data-quitar="${k}" aria-label="Quitar filtro">×</button></span>`).join("")}<button type="button" class="link-quitar" data-quitar="todo">Quitar todos los filtros</button></div>`;
@@ -94,6 +99,7 @@ function filtrosActivos(){
 function filtrosHTML(){
   return `${filtrosActivos()}<div class="filtros">
     <label>Puesto <select id="f-pos" class="${st.pos?"activo":""}"><option value="">Todos</option>${["F","M","D","G"].map(p=>`<option value="${p}" ${st.pos===p?"selected":""}>${POSP[p]}</option>`).join("")}</select></label>
+    <label>Posición <select id="f-rol" class="${st.rol?"activo":""}"><option value="">Todas</option>${ROLES.map(([k,l])=>`<option value="${k}" ${st.rol===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label>Equipo <select id="f-eq" class="${st.eq?"activo":""}"><option value="">Toda la liga</option>${equipos.map(([s,n])=>`<option value="${s}" ${st.eq===s?"selected":""}>${esc(n)}</option>`).join("")}</select></label>
     <label>Minutos mínimos <select id="f-min">${[90,180,450,900,1350].map(m=>`<option value="${m}" ${st.minJ===m?"selected":""}>${m}'</option>`).join("")}</select></label>
     <label>Edad <select id="f-edad" class="${st.edad?"activo":""}"><option value="">Todas</option>${[19,20,21,22,23,25].map(e=>`<option value="${e}" ${st.edad===String(e)?"selected":""}>Sub-${e}</option>`).join("")}</select></label>
@@ -105,6 +111,7 @@ function pintar(){
   document.getElementById("lid").innerHTML = filtrosHTML() + (st.modo==="rank" ? catsHTML() + rankHTML() : st.modo==="sit" ? sitHTML() : tablaHTML());
   const q = e => document.getElementById(e);
   q("f-pos").onchange = e=>{ st.pos = e.target.value; pintar(); };
+  q("f-rol").onchange = e=>{ st.rol = e.target.value; pintar(); };
   q("f-eq").onchange = e=>{ st.eq = e.target.value; pintar(); };
   q("f-min").onchange = e=>{ st.minJ = +e.target.value; pintar(); };
   q("f-edad").onchange = e=>{ st.edad = e.target.value; pintar(); };
@@ -113,7 +120,7 @@ function pintar(){
   document.querySelectorAll("[data-sit]").forEach(c=>c.onclick = ()=>{ st.sit = c.dataset.sit; pintar(); });
   document.querySelectorAll("[data-sitm]").forEach(c=>c.onclick = ()=>{ st.sitM = c.dataset.sitm; pintar(); });
   document.querySelectorAll("[data-cat]").forEach(c=>c.onclick = ()=>{ st.cat = c.dataset.cat; st.modo = "rank"; pintar(); });
-  document.querySelectorAll("[data-quitar]").forEach(c=>c.onclick = ()=>{ const k = c.dataset.quitar; if(k==="todo"){ st.eq = ""; st.pos = ""; st.edad = ""; } else st[k] = ""; pintar(); });
+  document.querySelectorAll("[data-quitar]").forEach(c=>c.onclick = ()=>{ const k = c.dataset.quitar; if(k==="todo"){ st.eq = ""; st.pos = ""; st.rol = ""; st.edad = ""; } else st[k] = ""; pintar(); });
   document.querySelectorAll("th.ord").forEach(c=>c.onclick = ()=>{ const k = c.dataset.c; if(st.orden===k) st.asc = !st.asc; else { st.orden = k; st.asc = k==="min" ? false : false; } pintar(); });
 }
 const tip = document.createElement("div"); tip.id = "tip2"; document.body.appendChild(tip);
@@ -123,7 +130,7 @@ document.addEventListener("mousemove", e=>{
   tip.textContent = t.getAttribute("data-t"); tip.style.opacity = 1;
   tip.style.left = Math.min(window.innerWidth - 320, e.clientX + 14) + "px"; tip.style.top = (e.clientY + 16) + "px";
 });
-app.innerHTML = `<div class="sitio-nav"><a class="marca" href="${R}index.html"><img src="${R}favicon.png" alt="" class="marca-logo">Liga <b>Stats</b></a><a href="${R}index.html">Inicio</a><a href="${R}liga/index.html" class="act">Mejores jugadores</a><a href="${R}simulador/index.html">Simulador</a><div class="sp"></div><button type="button" class="tema-btn" aria-label="Cambiar entre modo claro y oscuro"></button><div class="buscador"></div></div>
+app.innerHTML = `<div class="sitio-nav"><a class="marca" href="${R}index.html"><img src="${R}favicon.png" alt="" class="marca-logo">Liga <b>Stats</b></a><a href="${R}index.html">Inicio</a><a href="${R}liga/index.html" class="act">Mejores jugadores</a><a href="${R}simulador/index.html">Simulador</a><a href="${R}previa/index.html">Previa</a><div class="sp"></div><button type="button" class="tema-btn" aria-label="Cambiar entre modo claro y oscuro"></button><div class="buscador"></div></div>
   <div class="hero"><div class="hero-inner"><h1>Mejores jugadores</h1>
   <div class="subt"><span>${JUG.length} jugadores</span><span>${LIGA.params.partidos} partidos</span></div></div></div>
   <div class="wrap"><div id="lid"></div>

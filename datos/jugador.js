@@ -61,7 +61,10 @@ function marcas(){
 function hero(){
   const fx = LIGA.params.fxEurUsd;
   const valorTxt = P.valor ? `<span data-t="Valor de mercado estimado, pasado de euros a dólares con el tipo de cambio del día en que se generó el sitio (≈ US$${fx?fx.toFixed(3):"–"} por euro). Puede no reflejar el valor real ni estar actualizado.">Valor de mercado ≈ US$${P.valor>=1e6?(P.valor/1e6).toFixed(1)+" M":Math.round(P.valor/1e3)+" mil"}</span>` : "";
+  const capi = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+  const posTxt = P.rol && P.rol !== "arquero" ? `<span data-t="Titular en ${P.titular} partido${P.titular===1?"":"s"}: ${Object.entries(P.rolv||{}).sort((a,b)=>b[1]-a[1]).map(([r,n])=>n+" como "+r).join(", ")}. Sale de dónde se paró en cada partido.">${capi(P.rol)}${P.rol2 ? " · también " + P.rol2 : ""}</span>` : "";
   const otros = [POSN[P.pos], P.num!=null?"#"+P.num:"", edadTxt(), P.alt?P.alt+" cm":"", P.pais||""].filter(Boolean);
+  const pieTxt = P.pie ? `<span data-t="${P.pie.oficial ? "Dato de su ficha." : "Estimada con sus remates"}: ${P.pie.der} remates con la derecha y ${P.pie.izq} con la izquierda (sin contar los de cabeza).">${P.pie.lado==="ambas" ? "Usa las dos piernas" : "Pierna hábil: " + P.pie.lado}</span>` : "";
   const kpi = (v,t)=>`<div class="rec-item"><div class="rec-val">${v}</div><div class="rec-lbl">${t}</div></div>`;
   const puntajeTxt = P.score==null ? "–" : Math.round(P.score);
   const mismoPuesto = JUG.filter(j=>j.pos===P.pos && j.score!=null);
@@ -72,7 +75,7 @@ function hero(){
     <div>
       <div style="display:flex; gap:14px; align-items:center"><img src="${R}datos/escudos/${P.ts}.webp" alt="${esc(P.tn)}" style="width:60px;height:60px;object-fit:contain;flex:none" onerror="this.remove()">
       <div><h1>${esc(P.name)}</h1>
-      <div class="subt"><a href="../index.html"><img src="${R}datos/escudos/${P.ts}.webp" alt="" class="escudo" style="width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-right:4px" onerror="this.remove()">${esc(P.tn)}</a>${otros.map(o=>`<span>${esc(o)}</span>`).join("")}${valorTxt}</div></div></div>
+      <div class="subt"><a href="../index.html"><img src="${R}datos/escudos/${P.ts}.webp" alt="" class="escudo" style="width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-right:4px" onerror="this.remove()">${esc(P.tn)}</a>${otros.slice(0,1).map(o=>`<span>${esc(o)}</span>`).join("")}${posTxt}${otros.slice(1).map(o=>`<span>${esc(o)}</span>`).join("")}${pieTxt}${valorTxt}</div></div></div>
       <div class="marcas">${marcas()}</div></div>
     <div class="hero-stats">${puntaje}${kpi(P.pj,"partidos")}${kpi(P.min,"minutos")}${kpi(P.rating==null?"–":P.rating.toFixed(2),"nota")}${kpi(P.tot.g,"goles")}${kpi(P.tot.a,"asist.")}</div>
   </div></div></div>`;
@@ -388,7 +391,7 @@ function pintarCmp(){
   out.innerHTML = h;
 }
 function nav(){
-  return `<div class="sitio-nav"><a class="marca" href="${R}index.html"><img src="${R}favicon.png" alt="" class="marca-logo">Liga <b>Stats</b></a><a href="${R}index.html">Inicio</a><a href="${R}liga/index.html">Mejores jugadores</a><a href="${R}simulador/index.html">Simulador</a><a href="../index.html">${esc(P.tn)}</a><div class="sp"></div><button type="button" class="tema-btn" aria-label="Cambiar entre modo claro y oscuro"></button><div class="buscador"></div></div>`;
+  return `<div class="sitio-nav"><a class="marca" href="${R}index.html"><img src="${R}favicon.png" alt="" class="marca-logo">Liga <b>Stats</b></a><a href="${R}index.html">Inicio</a><a href="${R}liga/index.html">Mejores jugadores</a><a href="${R}simulador/index.html">Simulador</a><a href="${R}previa/index.html">Previa</a><a href="../index.html">${esc(P.tn)}</a><div class="sp"></div><button type="button" class="tema-btn" aria-label="Cambiar entre modo claro y oscuro"></button><div class="buscador"></div></div>`;
 }
 const partes = [resumen(), percentiles(), fisico(), dinamismo(), mapas(), partidos(), distribucion(), parecidos(), comparar()].filter(Boolean);
 const ids = [["resumen","Resumen"],["percentiles","Percentiles"],["fisico","Físico"],["dinamismo","Dinamismo"],["mapas","Mapas"],["partidos","Partidos"],["distribucion","En la liga"],["parecidos","Parecidos"],["comparar","Comparar"]]
